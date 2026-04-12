@@ -1,0 +1,12 @@
+---
+description: "Library Starter — scaffolds a new Archetect library"
+summary: "Prompts for name/description/author and an optional SCM provider, then renders a library archetype with sample includes/ and lib/ directories."
+authors: ["Jimmie Fulton <jimmie.fulton@gmail.com>"]
+tags: ["starter", "library", "meta"]
+
+requires:
+  archetect: "3.0.0"
+
+templating:
+  trim_blocks: true
+  lstrip_blocks: true

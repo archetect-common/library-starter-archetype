@@ -1,0 +1,6 @@
+---
+description: "{{ description }}"
+authors: ["{{ author_full }}"]
+
+requires:
+  archetect: "3.0.0"
