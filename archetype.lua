@@ -17,7 +17,7 @@ context:prompt_text("Author:", "author_full", {
 local repo_name = context:get("archetype_name") .. "-library"
 context:set("repo_name", repo_name)
 
-context:prompt_multi_select("Library Contents:", "library_contents",
+context:prompt_multiselect("Library Contents:", "library_contents",
     { "includes (ATL template partials)", "lib (Lua modules)" },
     {
         default = { "includes (ATL template partials)" },
@@ -37,15 +37,6 @@ if uses_github then
         placeholder = "your-org or username",
         default = "your-org",
     })
-end
-
-if scm == "GitHub (Publish)" then
-    local token = os.getenv("GITHUB_TOKEN")
-    if not token or token == "" then
-        log.warn("GITHUB_TOKEN is not set. Falling back to GitHub (Instructions) mode.")
-        scm = "GitHub (Instructions)"
-        context:set("scm_provider", scm)
-    end
 end
 
 if uses_github then
@@ -82,23 +73,34 @@ local repo = git.init(repo_name, { branch = "main" })
 repo:add_all()
 repo:commit("initial commit")
 
--- Publish
-if scm == "GitHub (Publish)" then
-    local github = require("archetect.github")
-    local slug = context:get("github_slug")
-    if github.create_repo(slug, { visibility = "public" }) then
-        repo:remote_add("origin", "git@github.com:" .. slug .. ".git")
-        repo:push("origin", "main")
-        log.info("Published to https://github.com/" .. slug)
-    end
-elseif scm == "GitHub (Instructions)" then
-    local slug = context:get("github_slug")
+local function print_manual_instructions(slug)
     log.info("")
-    log.info("Next steps:")
+    log.info("To publish manually:")
     log.info("  cd " .. repo_name)
     log.info("  gh repo create " .. slug .. " --public --source=. --remote=origin")
     log.info("  git push -u origin HEAD")
     log.info("")
+end
+
+-- Publish
+if scm == "GitHub (Publish)" then
+    local github = require("archetect.github")
+    local slug = context:get("github_slug")
+    -- pcall so an auth/API failure degrades to printed instructions
+    -- instead of aborting after we've already scaffolded the project.
+    local ok, created = pcall(github.create_repo, slug, { visibility = "public" })
+    if ok and created then
+        repo:remote_add("origin", "git@github.com:" .. slug .. ".git")
+        repo:push("origin", "main")
+        log.info("Published to https://github.com/" .. slug)
+    else
+        if not ok then
+            log.warn("GitHub publish failed: " .. tostring(created))
+        end
+        print_manual_instructions(slug)
+    end
+elseif scm == "GitHub (Instructions)" then
+    print_manual_instructions(context:get("github_slug"))
 elseif scm == "None" then
     log.info("")
     log.info("Local library created at ./" .. repo_name)
